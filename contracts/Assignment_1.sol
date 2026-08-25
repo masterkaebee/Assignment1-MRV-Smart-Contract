@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 contract MRV_Solution{
     
     enum Outcome {Pending, Verified, Disputed, Rejected}
+    enum Role {Regulator, Auditor, Personnel, Sensor}
+    enum Source {Personnel, Automated}
 
     //Facility Struct
     struct Facility {
@@ -19,6 +21,7 @@ contract MRV_Solution{
         uint facility_id; // facitlity identifier
         bytes32 data_hash; // hash of emmissions data - hashed for security
         address submitted_by; // important for audit trail and tracking - using address
+        Source source;
         uint submitted_when; // submission timestamp - but using block.timestamp
         
     }
@@ -27,17 +30,19 @@ contract MRV_Solution{
     struct VerificationDetails {
         uint record_id; // emissions record identifier
         uint audit_firm_id; // audit firm identifier
-        uint audit_time; // audit timestamp - using block.timestamp
+        uint audit_time; // audit timestamp - using block.timestamp 
         Outcome outcome;
         bytes32 comments_hash; // hashed audit comments 
     }   
 
     // Other state variables
     address public admin;
+    uint public audit_firm_count;
 
     // Mapping and Arrays
     mapping(address => bool) public regulators;
     mapping(address => bool) public personnel;
+    mapping(address => bool) public sensors;
     mapping(address => bool) public auditors; 
     Facility[] public facilities;
     EmissionsRecord[] public emission_records;
@@ -49,8 +54,54 @@ contract MRV_Solution{
     error NotAdmin(address caller);
     error NotRegulator(address caller);
     error NotAuditor(address caller);
-    error NotAuthorisedPersonnel(address caller);
-    error AlreadyVerifier(address caller);
+    error NotAuthorisedSubmitter (address caller);
+    error AlreadyAuditor(address caller);
+
+          // Event fired on role assignment/removal
+    event RoleGranted (
+        Role indexed _role,
+        address indexed _account,
+        address _grantedby
+    );
+
+    event RoleRevoked (
+        Role indexed _role,
+        address indexed _account,
+        address _revokedby
+    );
+
+    // Event fired on transfer of admin rights
+    event AdminTransferred (
+        address indexed _previous_admin,
+        address indexed _new_admin
+    );
+
+    // Event fired on registration of facility
+    event FacilityRegistered (
+        uint indexed _facility_id,
+        address _registered_by
+    );
+
+    // Event fired on registration of audit firm
+    event AuditFirmRegistered (
+        uint indexed _audit_firm_id,
+        address _registered_by
+    );
+
+    // Event fired on submission of record
+    event RecordSubmitted (
+        uint indexed _record_id,
+        uint indexed _facility_id,
+        bytes32 _data_hash
+    );
+
+    // Event registered when verification appended
+    event VerificationAppended (
+        uint indexed _record_id,
+        uint indexed _audit_firm_id,
+        Outcome indexed _outcome
+    );
+  
 
     // Roles and modifiers
     modifier onlyAdmin() {
@@ -65,7 +116,6 @@ contract MRV_Solution{
             revert NotRegulator(msg.sender);
         }
         _;
-
     }
 
     modifier onlyAuditor() {
@@ -75,10 +125,16 @@ contract MRV_Solution{
         _;
     }
 
-    modifier onlyAuthorisedPersonnel() {
-        if (!personnel[msg.sender]) {
-            revert NotAuthorisedPersonnel(msg.sender);
+    modifier onlyAuthorisedSubmitter() {
+        if (!sensors[msg.sender] && !personnel[msg.sender]) {
+            revert NotAuthorisedSubmitter(msg.sender);
         }
         _;
+    }
+
+    // constructor
+    constructor () {
+        admin = msg.sender;
+        emit AdminTransferred(address(0), msg.sender);
     }
 }
