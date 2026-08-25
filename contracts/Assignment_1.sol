@@ -50,12 +50,15 @@ contract MRV_Solution{
     mapping(address => uint) public auditor_to_firm;
     mapping(uint => VerificationDetails[]) public record_verifications;
 
-    //errors
+    //custom errors
     error NotAdmin(address caller);
     error NotRegulator(address caller);
     error NotAuditor(address caller);
+    error InvalidAuditFirm(uint audit_firm_id);
     error NotAuthorisedSubmitter (address caller);
-    error AlreadyAuditor(address caller);
+    error ZeroAddress();
+    error AlreadyHasRole(address account, Role role);
+    error DoesNotHaveRole(address account, Role role);
 
           // Event fired on role assignment/removal
     event RoleGranted (
@@ -136,5 +139,56 @@ contract MRV_Solution{
     constructor () {
         admin = msg.sender;
         emit AdminTransferred(address(0), msg.sender);
+    }
+
+    //functions to grant roles
+    function grantRegulator (address account) external onlyAdmin {
+        if (account == address(0)) revert ZeroAddress();
+        if (regulators[account]) revert AlreadyHasRole(account, Role.Regulator);
+        regulators[account] = true;
+        emit RoleGranted(Role.Regulator, account, msg.sender);
+    }
+    function grantAuditor (address account, uint _audit_firm_id) external onlyAdmin {
+        if (account == address(0)) revert ZeroAddress();
+        if (auditors[account]) revert AlreadyHasRole(account, Role.Auditor);
+        if (_audit_firm_id ==0 || _audit_firm_id > audit_firm_count) revert InvalidAuditFirm(_audit_firm_id);
+        auditors[account] = true;
+        auditor_to_firm[account] = _audit_firm_id;
+        emit RoleGranted(Role.Auditor, account, msg.sender);
+    }
+    function grantPersonnel (address account) external onlyAdmin {
+        if (account == address(0)) revert ZeroAddress();
+        if (personnel[account]) revert AlreadyHasRole(account, Role.Personnel);
+        personnel[account] = true;
+        emit RoleGranted(Role.Personnel, account, msg.sender);
+    }
+    function grantSensor (address account) external onlyAdmin {
+        if (account == address(0)) revert ZeroAddress();
+        if (sensors[account]) revert AlreadyHasRole(account, Role.Sensor);
+        sensors[account] = true;
+        emit RoleGranted(Role.Sensor, account, msg.sender);
+    }
+
+    //functions to revoke roles
+     function revokeRegulator (address account) external onlyAdmin {
+        if (!regulators[account]) revert DoesNotHaveRole(account, Role.Regulator);
+        regulators[account] = false;
+        emit RoleRevoked(Role.Regulator, account, msg.sender);
+    }
+    function revokeAuditor (address account) external onlyAdmin {
+        if (!auditors[account]) revert DoesNotHaveRole(account, Role.Auditor);
+        auditors[account] = false;
+        auditor_to_firm[account] = 0;
+        emit RoleRevoked(Role.Auditor, account, msg.sender);
+    }
+    function revokePersonnel (address account) external onlyAdmin {
+        if (!personnel[account]) revert DoesNotHaveRole(account, Role.Personnel);
+        personnel[account] = false;
+        emit RoleRevoked(Role.Personnel, account, msg.sender);
+    }
+    function revokeSensor (address account) external onlyAdmin {
+        if (!sensors[account]) revert DoesNotHaveRole(account, Role.Sensor);
+        sensors[account] = false;
+        emit RoleRevoked(Role.Sensor, account, msg.sender);
     }
 }
