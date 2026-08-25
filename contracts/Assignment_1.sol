@@ -30,10 +30,12 @@ contract MRV_Solution{
         uint audit_time; // audit timestamp - using block.timestamp
         Outcome outcome;
         bytes32 comments_hash; // hashed audit comments 
-    }
+    }   
 
-    // State Variables
+    // Other state variables
     address public admin;
+
+    // Mapping and Arrays
     mapping(address => bool) public regulators;
     mapping(address => bool) public personnel;
     mapping(address => bool) public auditors; 
@@ -43,6 +45,40 @@ contract MRV_Solution{
     mapping(address => uint) public auditor_to_firm;
     mapping(uint => VerificationDetails[]) public record_verifications;
 
+    //errors
+    error NotAdmin(address caller);
+    error NotRegulator(address caller);
+    error NotAuditor(address caller);
+    error NotAuthorisedPersonnel(address caller);
+    error AlreadyVerifier(address caller);
 
-    
+    // Roles and modifiers
+    modifier onlyAdmin() {
+        if (msg.sender != admin) {
+            revert NotAdmin(msg.sender);
+        } 
+        _;
+    }
+
+    modifier onlyRegulator() {
+        if (!regulators[msg.sender]) {
+            revert NotRegulator(msg.sender);
+        }
+        _;
+
+    }
+
+    modifier onlyAuditor() {
+        if (!auditors[msg.sender]) {
+            revert NotAuditor(msg.sender);
+        }
+        _;
+    }
+
+    modifier onlyAuthorisedPersonnel() {
+        if (!personnel[msg.sender]) {
+            revert NotAuthorisedPersonnel(msg.sender);
+        }
+        _;
+    }
 }
