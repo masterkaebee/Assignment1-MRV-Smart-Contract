@@ -32,3 +32,6 @@
 
 # Smart contract example. not part of submission
 /example
+
+# Report document
+.docx
