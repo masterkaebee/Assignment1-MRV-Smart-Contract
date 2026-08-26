@@ -23,7 +23,6 @@ contract MRV_Solution{
         address submitted_by; // important for audit trail and tracking - using address
         Source source;
         uint submitted_when; // submission timestamp - but using block.timestamp
-        
     }
 
     // Verification Struct
@@ -57,10 +56,11 @@ contract MRV_Solution{
     error InvalidAuditFirm(uint audit_firm_id);
     error NotAuthorisedSubmitter (address caller);
     error ZeroAddress();
+    error NoNameProvided();
     error AlreadyHasRole(address account, Role role);
     error DoesNotHaveRole(address account, Role role);
 
-          // Event fired on role assignment/removal
+    // Event fired on role assignment/removal
     event RoleGranted (
         Role indexed _role,
         address indexed _account,
@@ -92,10 +92,11 @@ contract MRV_Solution{
     );
 
     // Event fired on submission of record
-    event RecordSubmitted (
+    event EmissionsRecordSubmitted (
         uint indexed _record_id,
         uint indexed _facility_id,
-        bytes32 _data_hash
+        bytes32 _data_hash,
+        Source _source
     );
 
     // Event registered when verification appended
@@ -191,4 +192,49 @@ contract MRV_Solution{
         sensors[account] = false;
         emit RoleRevoked(Role.Sensor, account, msg.sender);
     }
-}
+
+    //Register Facility Function
+   function registerFacility(string calldata _facility_name) external onlyRegulator returns (uint){
+        if  (bytes(_facility_name).length == 0) revert NoNameProvided();
+        uint _facility_id = facilities.length;
+        facilities.push(Facility(_facility_id, _facility_name, msg.sender, true));
+        emit FacilityRegistered(_facility_id, msg.sender);
+        return _facility_id;
+    }
+
+    // Register Audit Firm
+    function registerAuditFirm(string calldata _audit_firm_name) external onlyRegulator returns(uint){
+        if (bytes(_audit_firm_name).length == 0) revert NoNameProvided();
+        audit_firm_count ++;
+        uint _audit_firm_id = audit_firm_count;
+        audit_firm_name[_audit_firm_id] = _audit_firm_name;
+        emit AuditFirmRegistered(_audit_firm_id, msg.sender);
+        return _audit_firm_id;
+    }
+
+
+    //Submit Emissions Record
+    function submitEmissionRecord(uint _facility_id, bytes32 _data_hash) external onlyAuthorisedSubmitter returns (uint){
+        require (_facility_id < facilities.length, "Facility does not exist");
+        require (facilities[_facility_id].is_active, "Inactive facility");
+        require (_data_hash != bytes32(0), "Emission record is empty");
+        Source source = sensors[msg.sender] ? Source.Automated : Source.Personnel;
+        uint _record_id = emission_records.length;
+        emission_records.push(EmissionsRecord(_record_id, _facility_id, _data_hash, msg.sender, source, block.timestamp));
+        emit EmissionsRecordSubmitted(_record_id, _facility_id, _data_hash, source);
+        return _record_id;
+
+    }
+
+    //Verification Appended
+    function appendVerification(uint _record_id, Outcome outcome, bytes32 _comments_hash) external onlyAuditor returns (uint){
+        require (_record_id < emission_records.length, "Emissions record does not exist");
+        require (outcome != Outcome.Pending, "Verification in progress cannot submit");
+        uint _audit_firm_id = auditor_to_firm[msg.sender];
+        record_verifications[_record_id].push(VerificationDetails(_record_id, _audit_firm_id, block.timestamp, outcome, _comments_hash));
+        emit VerificationAppended(_record_id, _audit_firm_id, outcome);
+        return record_verifications[_record_id].length - 1;
+
+    }
+
+} 
