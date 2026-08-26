@@ -85,6 +85,13 @@ contract MRV_Solution{
         address _registered_by
     );
 
+    // Events fired on deactivaton and reactivation of facility
+    event FacilityStatusChanged(
+        uint indexed _facility_id,
+        bool _is_active,
+        address _changed_by
+    );
+
     // Event fired on registration of audit firm
     event AuditFirmRegistered (
         uint indexed _audit_firm_id,
@@ -227,14 +234,56 @@ contract MRV_Solution{
     }
 
     //Verification Appended
-    function appendVerification(uint _record_id, Outcome outcome, bytes32 _comments_hash) external onlyAuditor returns (uint){
+    function appendVerification(uint _record_id, Outcome _outcome, bytes32 _comments_hash) external onlyAuditor returns (uint){
         require (_record_id < emission_records.length, "Emissions record does not exist");
-        require (outcome != Outcome.Pending, "Verification in progress cannot submit");
+        require (_outcome != Outcome.Pending, "Verification in progress cannot submit");
         uint _audit_firm_id = auditor_to_firm[msg.sender];
-        record_verifications[_record_id].push(VerificationDetails(_record_id, _audit_firm_id, block.timestamp, outcome, _comments_hash));
-        emit VerificationAppended(_record_id, _audit_firm_id, outcome);
+        record_verifications[_record_id].push(VerificationDetails(_record_id, _audit_firm_id, block.timestamp, _outcome, _comments_hash));
+        emit VerificationAppended(_record_id, _audit_firm_id, _outcome);
         return record_verifications[_record_id].length - 1;
 
     }
 
+    //Transfer Admin function
+    function transferAdmin(address _new_admin) external onlyAdmin {
+        if (_new_admin == address(0)) revert ZeroAddress();
+        address _previous_admin = admin;
+        admin = _new_admin;
+        emit AdminTransferred(_previous_admin, _new_admin);
+
+    }
+
+    //function to deactivate facility
+    function deactivateFacility(uint _facility_id) external onlyRegulator {
+        require (_facility_id < facilities.length, "Facility does not exist");
+        require (facilities[_facility_id].is_active, "Facility is already inactive");
+        facilities[_facility_id].is_active = false;
+        emit FacilityStatusChanged(_facility_id, false, msg.sender);
+    }
+
+    // function to reactivate facility
+    function reactivateFacility(uint _facility_id) external onlyRegulator {
+        require (_facility_id < facilities.length, "Facility does not exist");
+        require (!facilities[_facility_id].is_active, "Facility is already active");
+        facilities[_facility_id].is_active = true;
+        emit FacilityStatusChanged(_facility_id, true, msg.sender);
+    }
+
+
+    //Function to view emission record fro verification
+    function getRecordVerifications(uint _record_id) external view returns (VerificationDetails[] memory) {
+        require (_record_id < emission_records.length, "Emission record does not exist");
+        return record_verifications[_record_id];
+
+    }
+
+    //count functions
+    function numberofFacilities() external view returns (uint) {
+        return facilities.length;
+    }
+
+    function numberofEmissionRecords() external view returns (uint) {
+        return emission_records.length;
+    }
+        
 } 
