@@ -35,3 +35,6 @@
 
 # Report document
 *.docx
+
+#Additional features not part of initial submission
+/frontend

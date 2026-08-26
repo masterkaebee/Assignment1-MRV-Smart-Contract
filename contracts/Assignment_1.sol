@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 contract MRV_Solution{
     
-    enum Outcome {Pending, Verified, Disputed, Rejected}
-    enum Role {Regulator, Auditor, Personnel, Sensor}
-    enum Source {Personnel, Automated}
+    enum Outcome {Pending, Verified, Disputed, Rejected} // {0, 1, 2, 3, 4}
+    enum Role {Regulator, Auditor, Personnel, Sensor} // {0, 1, 2, 3, 4}
+    enum Source {Personnel, Automated} // {0, 1}
 
     //Facility Struct
     struct Facility {
@@ -270,7 +270,7 @@ contract MRV_Solution{
     }
 
 
-    //Function to view emission record fro verification
+    //Function to view emission record for verification
     function getRecordVerifications(uint _record_id) external view returns (VerificationDetails[] memory) {
         require (_record_id < emission_records.length, "Emission record does not exist");
         return record_verifications[_record_id];
